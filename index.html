@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>AV.BY Offers</title>
+<style>
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ccc; padding: 4px 8px; }
+  th { background-color: #f0f0f0; }
+</style>
+</head>
+<body>
+<h1>Объявления</h1>
+<table id="offers">
+  <thead>
+    <tr>
+      <th>Цена, BYN</th>
+      <th>Средняя цена, BYN</th>
+      <th>Отклонение, %</th>
+      <th>Ссылка</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+<script>
+async function loadOffers() {
+  const url = 'https://api.av.by/offer-types/cars/filters/main/apply';
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Device-Type': 'web.desktop',
+    'User-Agent': navigator.userAgent
+  };
+  try {
+    const resp = await fetch(url, {method: 'POST', headers, body: JSON.stringify({})});
+    if (!resp.ok) {
+      throw new Error('Request failed: ' + resp.status);
+    }
+    const data = await resp.json();
+    const items = data.advertisements || data.items || [];
+    const list = [];
+    for (const it of items) {
+      const price = it.price?.byn?.amount;
+      const avg = it.averagePrice?.byn?.amount;
+      const link = it.publicUrl;
+      if (price == null || avg == null) {
+        console.warn('Отсутствует averagePrice для', it);
+        continue;
+      }
+      const diff = (price - avg) / avg * 100;
+      list.push({price, avg, diff, link});
+    }
+    list.sort((a, b) => a.diff - b.diff);
+    const tbody = document.querySelector('#offers tbody');
+    for (const row of list) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${row.price}</td><td>${row.avg}</td><td>${row.diff.toFixed(2)}</td><td><a href="${row.link}" target="_blank">Открыть</a></td>`;
+      tbody.appendChild(tr);
+    }
+  } catch (e) {
+    console.error(e);
+    const tbody = document.querySelector('#offers tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="4">Ошибка: ${e.message}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', loadOffers);
+</script>
+</body>
+</html>
